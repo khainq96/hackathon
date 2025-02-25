@@ -1,0 +1,6 @@
+fastapi==0.110.0
+uvicorn==0.29.0
+pytesseract==0.3.10
+sentence-transformers==2.5.1
+opensearch-py==2.5.0
+python-multipart=0.0.20
