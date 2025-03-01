@@ -1,23 +1,43 @@
-version: '3'
 services:
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend-hackathon
+      dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "3000:3000"
+    volumes:
+      - ./frontend-hackathon:/app
+      - /app/node_modules
+    command: npm start
     depends_on:
       - backend
+    networks:
+      - app-network
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend-hackathon
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend-hackathon:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
-      - AWS_ACCESS_KEY_ID=your_access_key
-      - AWS_SECRET_ACCESS_KEY=your_secret_key
-      - AWS_REGION=your_region
-      - S3_BUCKET=your-s3-bucket-name
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - S3_BUCKET=${S3_BUCKET}
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - OPENSEARCH_USERNAME=admin
+      - OPENSEARCH_PASSWORD=admin
+      - OPENSEARCH_USE_SSL=false
     depends_on:
-      - opensearch
+      opensearch:
+        condition: service_healthy
+    networks:
+      - app-network
 
   opensearch:
     image: opensearchproject/opensearch:2.11.0
@@ -30,15 +50,30 @@ services:
       - "9600:9600"
     volumes:
       - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - app-network
 
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.0
     ports:
       - "5601:5601"
     environment:
-      - OPENSEARCH_HOSTS=http://opensearch:9200
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
     depends_on:
-      - opensearch
+      opensearch:
+        condition: service_healthy
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   opensearch-data:

@@ -1,3 +1,5 @@
 /frontend-hackathon/node_modules/
 /frontend-hackathon/.next/
 /frontend-hackathon/build/
+
+.env
